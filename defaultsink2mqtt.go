@@ -4,28 +4,33 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
-	"net/http/pprof"
 	"os"
+	"os/exec"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/lawl/pulseaudio"
-	"golang.org/x/net/trace"
 )
 
 var (
-	listenAddress = flag.String("listen",
-		":8718",
-		"listen address for HTTP API (e.g. for Shelly buttons)")
-
 	mqttBroker = flag.String("mqtt_broker",
-		"tcp://dr.lan:1883",
+		"tcp://scotty-the-fourth.fritz.box:1883",
 		"MQTT broker address for github.com/eclipse/paho.mqtt.golang")
 
 	mqttPrefix = flag.String("mqtt_topic",
 		"github.com/stapelberg/defaultsink2mqtt/",
 		"MQTT topic prefix")
 )
+
+func credentialProvider() (username string, password string) {
+	password_path := "heuselfamily/mqtt/"
+	username = "defaultsink2mqtt"
+	out, err := exec.Command("gopass", "show", "--password", password_path+username).Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	password = string(out)
+	return username, password
+}
 
 func defaultsink2mqtt() error {
 	opts := mqtt.NewClientOptions().AddBroker(*mqttBroker)
@@ -34,13 +39,12 @@ func defaultsink2mqtt() error {
 		clientID += "@" + hostname
 	}
 	opts.SetClientID(clientID)
+	opts.SetCredentialsProvider(credentialProvider)
 	opts.SetConnectRetry(true)
 	mqttClient := mqtt.NewClient(opts)
 	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
 		return fmt.Errorf("MQTT connection failed: %v", token.Error())
 	}
-
-	trace.AuthRequest = func(req *http.Request) (any, sensitive bool) { return true, true }
 
 	client, err := pulseaudio.NewClient()
 	if err != nil {
@@ -51,7 +55,7 @@ func defaultsink2mqtt() error {
 	if err != nil {
 		return err
 	}
-	go func() {
+	func() {
 		var lastDefaultSink string
 		for ; ; <-updates {
 			info, err := client.ServerInfo()
@@ -73,14 +77,6 @@ func defaultsink2mqtt() error {
 		}
 	}()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/requests/", trace.Traces)
-
-	log.Printf("http.ListenAndServe(%q)", *listenAddress)
-	if err := http.ListenAndServe(*listenAddress, mux); err != nil {
-		return err
-	}
 	return nil
 }
 
