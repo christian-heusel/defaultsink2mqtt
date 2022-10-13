@@ -40,7 +40,7 @@ type NotificationCallback struct {
 }
 
 func (callback *NotificationCallback) Notify(sinkName string) {
-	log.Println("MQTT: ", *mqttPrefix+"default_sink -> ", sinkName)
+	log.Printf("MQTT: %sdefault_sink -> %q", *mqttPrefix, sinkName)
 	callback.mqttClient.Publish(
 		*mqttPrefix+"default_sink",
 		0,    /* qos */
@@ -62,6 +62,7 @@ func defaultsink2mqtt() error {
 	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
 		return fmt.Errorf("MQTT connection failed: %v", token.Error())
 	}
+	log.Printf("Successfully registered on %q", *mqttBroker)
 
 	if err := getUpdates(NotificationCallback{mqttClient}); err != nil {
 		return err
