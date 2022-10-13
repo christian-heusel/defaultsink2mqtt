@@ -3,19 +3,12 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"os/signal"
-	"time"
-
 	ole "github.com/go-ole/go-ole"
 
 	"github.com/moutend/go-wca/pkg/wca"
 )
 
 func getUpdates(callback NotificationCallback) error {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
 
 	if err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED); err != nil {
 		return err
@@ -42,13 +35,7 @@ func getUpdates(callback NotificationCallback) error {
 		return err
 	}
 
-	select {
-	case <-quit:
-		fmt.Println("Received keyboard interrupt.")
-	case <-time.After(5 * time.Minute):
-		fmt.Println("Received timeout signal")
-	}
-	fmt.Println("Done")
+	select {}
 	return nil
 }
 
