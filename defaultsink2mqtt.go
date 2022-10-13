@@ -8,7 +8,6 @@ import (
 	"os/exec"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/lawl/pulseaudio"
 )
 
 var (
@@ -19,17 +18,35 @@ var (
 	mqttPrefix = flag.String("mqtt_topic",
 		"github.com/stapelberg/defaultsink2mqtt/",
 		"MQTT topic prefix")
+
+	gopassPath = flag.String("gopass_path",
+		"/home/chris/.local/bin/gopass",
+		"Path to the gopass executable")
 )
 
 func credentialProvider() (username string, password string) {
 	password_path := "heuselfamily/mqtt/"
 	username = "defaultsink2mqtt"
-	out, err := exec.Command("/home/chris/.local/bin/gopass", "show", "--password", password_path+username).Output()
+	out, err := exec.Command(*gopassPath, "show", "--password", password_path+username).Output()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error in gopass cmd:", err)
 	}
 	password = string(out)
 	return username, password
+}
+
+type NotificationCallback struct {
+	mqttClient mqtt.Client
+}
+
+func (callback *NotificationCallback) Notify(sinkName string) {
+	log.Println("MQTT: ", *mqttPrefix+"default_sink -> ", sinkName)
+	callback.mqttClient.Publish(
+		*mqttPrefix+"default_sink",
+		0,    /* qos */
+		true, /* retained */
+		sinkName)
+
 }
 
 func defaultsink2mqtt() error {
@@ -46,37 +63,9 @@ func defaultsink2mqtt() error {
 		return fmt.Errorf("MQTT connection failed: %v", token.Error())
 	}
 
-	client, err := pulseaudio.NewClient()
-	if err != nil {
+	if err := getUpdates(NotificationCallback{mqttClient}); err != nil {
 		return err
 	}
-	defer client.Close()
-	updates, err := client.Updates()
-	if err != nil {
-		return err
-	}
-	func() {
-		var lastDefaultSink string
-		for ; ; <-updates {
-			info, err := client.ServerInfo()
-			if err != nil {
-				log.Printf("ServerInfo: %v", err)
-				continue
-			}
-			if info.DefaultSink != lastDefaultSink {
-				log.Printf("default sink changed from %s to %s", lastDefaultSink, info.DefaultSink)
-
-				mqttClient.Publish(
-					*mqttPrefix+"default_sink",
-					0,    /* qos */
-					true, /* retained */
-					string(info.DefaultSink))
-
-				lastDefaultSink = info.DefaultSink
-			}
-		}
-	}()
-
 	return nil
 }
 
