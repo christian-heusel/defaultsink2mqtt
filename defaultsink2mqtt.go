@@ -24,7 +24,7 @@ var (
 func credentialProvider() (username string, password string) {
 	password_path := "heuselfamily/mqtt/"
 	username = "defaultsink2mqtt"
-	out, err := exec.Command("gopass", "show", "--password", password_path+username).Output()
+	out, err := exec.Command("/home/chris/.local/bin/gopass", "show", "--password", password_path+username).Output()
 	if err != nil {
 		log.Fatal(err)
 	}
