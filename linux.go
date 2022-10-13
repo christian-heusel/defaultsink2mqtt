@@ -2,7 +2,13 @@
 
 package main
 
-func getUpdates(callback notificationCallback) error {
+import (
+	"log"
+
+	"github.com/lawl/pulseaudio"
+)
+
+func getUpdates(callback NotificationCallback) error {
 
 	client, err := pulseaudio.NewClient()
 	if err != nil {
@@ -22,11 +28,11 @@ func getUpdates(callback notificationCallback) error {
 				continue
 			}
 			if info.DefaultSink != lastDefaultSink {
-				log.Printf("default sink changed from %s to %s", lastDefaultSink, info.DefaultSink)
+				log.Printf("default sink changed from %q to %q", lastDefaultSink, info.DefaultSink)
 				callback.Notify(info.DefaultSink)
 				lastDefaultSink = info.DefaultSink
 			}
 		}
 	}()
-
+	return nil
 }
