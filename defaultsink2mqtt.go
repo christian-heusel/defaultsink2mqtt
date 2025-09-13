@@ -12,7 +12,7 @@ import (
 
 var (
 	mqttBroker = flag.String("mqtt_broker",
-		"tcp://scotty-the-fourth.fritz.box:1883",
+		"tcp://scotty-the-fifth.lan:1883",
 		"MQTT broker address for github.com/eclipse/paho.mqtt.golang")
 
 	mqttPrefix = flag.String("mqtt_topic",
